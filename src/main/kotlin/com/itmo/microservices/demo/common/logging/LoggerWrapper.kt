@@ -5,16 +5,19 @@ import org.slf4j.Logger
 
 const val testServiceFiledName = "test_service"
 
-class LoggerWrapper(var logger:Logger, var serviceName: String) {
-    fun info(msg: String){
+class LoggerWrapper(
+    var logger: Logger,
+    var serviceName: String
+) {
+    fun info(msg: String) {
         logger.info(append(testServiceFiledName, serviceName), msg)
     }
 
-    fun error(msg: String){
+    fun error(msg: String) {
         logger.error(append(testServiceFiledName, serviceName), msg)
     }
 
-    fun error(msg: String, throwable: Throwable){
+    fun error(msg: String, throwable: Throwable) {
         logger.error(append(testServiceFiledName, serviceName), msg, throwable)
     }
 }

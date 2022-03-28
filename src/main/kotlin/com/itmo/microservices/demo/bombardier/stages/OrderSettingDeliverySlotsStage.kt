@@ -24,6 +24,11 @@ class OrderSettingDeliverySlotsStage : TestStage {
         eventLogger = EventLoggerWrapper(eventLog, testCtx().serviceName)
 
         eventLogger.info(I_CHOOSE_SLOT, testCtx().orderId)
+
+        if (!testCtx().finalizationNeeded()) {
+            return TestStage.TestContinuationType.CONTINUE // todo logvinenko add log
+        }
+
         val availableSlots = externalServiceApi.getDeliverySlots(
             testCtx().userId!!,
             10

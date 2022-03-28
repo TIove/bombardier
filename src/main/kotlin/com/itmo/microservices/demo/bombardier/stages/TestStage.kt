@@ -37,7 +37,9 @@ interface TestStage {
 
     class ExceptionFreeTestStage(override val wrapped: TestStage) : TestStage, DecoratingStage {
         override suspend fun run(userManagement: UserManagement, externalServiceApi: ExternalServiceApi) = try {
-            wrapped.run(userManagement, externalServiceApi)
+            wrapped.run(userManagement, externalServiceApi).also {
+                testCtx().stagesComplete.add(wrapped.name())
+            }
         } catch (failedException: TestStageFailedException) {
             TestContinuationType.FAIL
         } catch (th: Throwable) {

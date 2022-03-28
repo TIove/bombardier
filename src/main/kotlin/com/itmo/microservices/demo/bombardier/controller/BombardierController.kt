@@ -3,27 +3,26 @@ package com.itmo.microservices.demo.bombardier.controller
 import com.itmo.microservices.demo.bombardier.ServiceDescriptor
 import com.itmo.microservices.demo.bombardier.dto.NewServiceRequest
 import com.itmo.microservices.demo.bombardier.dto.RunTestRequest
+import com.itmo.microservices.demo.bombardier.dto.RunningTestsResponse
+import com.itmo.microservices.demo.bombardier.dto.toExtended
+import com.itmo.microservices.demo.bombardier.exceptions.InvalidServiceUrlException
+import com.itmo.microservices.demo.bombardier.external.knownServices.KnownServices
 import com.itmo.microservices.demo.bombardier.flow.TestController
 import com.itmo.microservices.demo.bombardier.flow.TestParameters
 import io.swagger.v3.oas.annotations.Operation
 import io.swagger.v3.oas.annotations.media.Content
 import io.swagger.v3.oas.annotations.responses.ApiResponse
-import com.itmo.microservices.demo.bombardier.dto.RunningTestsResponse
-import com.itmo.microservices.demo.bombardier.dto.toExtended
-import com.itmo.microservices.demo.bombardier.exceptions.InvalidServiceUrlException
-import com.itmo.microservices.demo.bombardier.external.knownServices.KnownServices
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.bind.annotation.*
 import java.net.URL
 
 @RestController
 @RequestMapping("/test")
-class BombardierController(private val testApi: TestController, private val services: KnownServices) {
+class BombardierController(
+    private val testApi: TestController,
+    private val services: KnownServices
+) {
     companion object {
         val logger = LoggerFactory.getLogger(BombardierController::class.java)
     }
@@ -55,9 +54,11 @@ class BombardierController(private val testApi: TestController, private val serv
     )
     fun listAllRunningTests(): RunningTestsResponse {
         val currentTests = testApi.runningTests
-            .map { it.value.testParams.toExtended(
-                it.value.testsStarted.get(),
-                it.value.testsFinished.get())
+            .map {
+                it.value.testParams.toExtended(
+                    it.value.testsStarted.get(),
+                    it.value.testsFinished.get()
+                )
             }
         return RunningTestsResponse(currentTests)
     }
@@ -131,8 +132,7 @@ class BombardierController(private val testApi: TestController, private val serv
     fun newService(@RequestBody request: NewServiceRequest) {
         val url = try {
             URL(request.url)
-        }
-        catch (t: Throwable) {
+        } catch (t: Throwable) {
             throw InvalidServiceUrlException()
         }
         services.add(ServiceDescriptor(request.name, url))

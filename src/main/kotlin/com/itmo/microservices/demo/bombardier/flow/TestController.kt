@@ -1,13 +1,14 @@
 package com.itmo.microservices.demo.bombardier.flow
 
+import com.itmo.microservices.demo.bombardier.ServiceDescriptor
 import com.itmo.microservices.demo.bombardier.exception.BadRequestException
 import com.itmo.microservices.demo.bombardier.external.knownServices.KnownServices
-import com.itmo.microservices.demo.bombardier.ServiceDescriptor
 import com.itmo.microservices.demo.bombardier.external.knownServices.ServiceWithApiAndAdditional
 import com.itmo.microservices.demo.bombardier.stages.*
 import com.itmo.microservices.demo.bombardier.stages.TestStage.TestContinuationType.CONTINUE
 import com.itmo.microservices.demo.bombardier.stages.TestStage.TestContinuationType.STOP
 import com.itmo.microservices.demo.common.logging.LoggerWrapper
+import com.itmo.microservices.demo.common.metrics.Metrics
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -17,7 +18,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.CoroutineContext
-import com.itmo.microservices.demo.common.metrics.Metrics
 
 @Service
 class TestController(
@@ -49,7 +49,9 @@ class TestController(
 //        OrderAbandonedStage(serviceApi).asErrorFree(),
         orderFinalizingStage.asErrorFree(),
         orderSettingDeliverySlotsStage.asErrorFree(),
-        orderChangeItemsAfterFinalizationStage,
+        orderChangeItemsAfterFinalizationStage.asErrorFree(),
+        orderFinalizingStage.asErrorFree(),
+        orderSettingDeliverySlotsStage.asErrorFree(),
         orderPaymentStage.asRetryable().asErrorFree(),
         orderDeliveryStage.asErrorFree()
     )
@@ -129,8 +131,10 @@ class TestController(
             var i = 0
             while (true) {
                 val stage = testStages[i]
-                val stageResult = metrics.withTags(metrics.stageLabel, stage.name())
+                val stageResult = metrics
+                    .withTags(metrics.stageLabel, stage.name())
                     .stageDurationRecord(stage, stuff.userManagement, stuff.api)
+
                 when {
                     i == testStages.size - 1 && !stageResult.iSFailState() || stageResult == STOP -> {
                         metrics.testOkDurationRecord(System.currentTimeMillis() - testStartTime)
@@ -142,9 +146,9 @@ class TestController(
                     }
                     stageResult == CONTINUE -> {
                         i++
-                        if (stage is OrderChangeItemsAfterFinalizationStage && stage.testCtx().wasChangedAfterFinalization) {
-                            i = 3
-                        }
+//                        if (stage is OrderChangeItemsAfterFinalizationStage && stage.testCtx().wasChangedAfterFinalization) {
+//                            i = 3
+//                        }
                     }
                     else -> return@launch
                 }
@@ -167,11 +171,14 @@ data class TestContext(
     var userId: UUID? = null,
     var orderId: UUID? = null,
     var paymentDetails: PaymentDetails = PaymentDetails(),
-
-    var wasChangedAfterFinalization: Boolean = false
+    var stagesComplete: MutableList<String> = mutableListOf(),
+    var wasChangedAfterFinalization: Boolean = false,
 ) : CoroutineContext.Element {
     override val key: CoroutineContext.Key<TestContext>
         get() = TestCtxKey
+
+    fun finalizationNeeded() = OrderChangeItemsAfterFinalizationStage::class.java.simpleName in stagesComplete
+            && wasChangedAfterFinalization
 }
 
 data class PaymentDetails(

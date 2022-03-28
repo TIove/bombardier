@@ -27,6 +27,11 @@ class OrderFinalizingStage : TestStage {
         eventLogger = EventLoggerWrapper(eventLog, testCtx().serviceName)
 
         eventLogger.info(I_START_FINALIZING, testCtx().orderId)
+
+        if (!testCtx().finalizationNeeded()) {
+            return TestStage.TestContinuationType.CONTINUE // todo logvinenko add log
+        }
+
         val orderStateBeforeFinalizing = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
 
         val bookingResult = externalServiceApi.bookOrder(testCtx().userId!!, testCtx().orderId!!)
