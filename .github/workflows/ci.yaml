@@ -71,7 +71,7 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
             type=sha
-            type=raw,value=${{ steps.version.outputs.version }}
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ endsWith(github.ref, 'main') }}
             type=raw,value=latest,enable=${{ endsWith(github.ref, 'main') }}
 
       - name: Build with Maven
