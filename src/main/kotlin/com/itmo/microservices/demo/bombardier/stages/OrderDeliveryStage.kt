@@ -31,7 +31,7 @@ class OrderDeliveryStage : TestStage {
         val orderBeforeDelivery = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
 
         if (orderBeforeDelivery.deliveryDuration == null) {
-            eventLogger.error(E_INCORRECT_ORDER_STATUS, orderBeforeDelivery.id)
+            eventLogger.error(E_INCORRECT_ORDER_STATUS, orderBeforeDelivery.id, orderBeforeDelivery.status)
             return TestStage.TestContinuationType.FAIL
         }
 
