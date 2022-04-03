@@ -27,7 +27,9 @@ class OrderCollectingStage : TestStage {
 
         val itemIds = mutableMapOf<UUID, Int>()
         val items = externalServiceApi.getAvailableItems(testCtx().userId!!)
-
+        if (items.size < 3) {
+            throw IllegalStateException("Products found: ${items.size}, required: at least 2")
+        }
         repeat(Random.nextInt(1, min(20, items.size))) {
             val itemToAdd = items.random()
             val amount = Random.nextInt(1, min(20, itemToAdd.amount))
