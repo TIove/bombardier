@@ -8,6 +8,8 @@ import com.itmo.microservices.demo.bombardier.flow.UserManagement
 import com.itmo.microservices.demo.bombardier.logging.OrderCollectingNotableEvents.*
 import com.itmo.microservices.demo.common.logging.EventLoggerWrapper
 import org.springframework.stereotype.Component
+import java.lang.Integer.max
+import java.lang.Integer.min
 import java.util.*
 import kotlin.random.Random
 
@@ -25,12 +27,11 @@ class OrderCollectingStage : TestStage {
 
         val itemIds = mutableMapOf<UUID, Int>()
         val items = externalServiceApi.getAvailableItems(testCtx().userId!!)
-        repeat(Random.nextInt(1, 20)) {
-            val amount = Random.nextInt(1, 20)
+
+        repeat(Random.nextInt(1, min(20, items.size))) {
             val itemToAdd = items.random()
-                .also { // todo should not to do on each addition but! we can randomise it
-                    itemIds[it.id] = amount
-                }
+            val amount = Random.nextInt(1, min(20, itemToAdd.amount))
+            itemIds[itemToAdd.id] = (itemIds[itemToAdd.id] ?: 0) + amount
 
             externalServiceApi.putItemToOrder(testCtx().userId!!, testCtx().orderId!!, itemToAdd.id, amount)
         }
