@@ -56,22 +56,26 @@ class OrderDeliveryStage : TestStage {
         val orderAfterDelivery = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
         when (orderAfterDelivery.status) {
             is OrderStatus.OrderDelivered -> {
-                val deliveryLog = externalServiceApi.deliveryLog(testCtx().userId!!, testCtx().orderId!!)
-                if (deliveryLog.outcome != DeliverySubmissionOutcome.SUCCESS) {
-                    eventLogger.error(E_DELIVERY_OUTCOME_FAIL, orderAfterDelivery.id)
-                    return TestStage.TestContinuationType.FAIL
+                val deliveryLogArray = externalServiceApi.deliveryLog(testCtx().userId!!, testCtx().orderId!!)
+                deliveryLogArray.forEach { deliveryLog ->
+                    if (deliveryLog.outcome != DeliverySubmissionOutcome.SUCCESS) {
+                        eventLogger.error(E_DELIVERY_OUTCOME_FAIL, orderAfterDelivery.id)
+                        return TestStage.TestContinuationType.FAIL
+                    }
+                    val expectedDeliveryTime = Duration.ofMillis(orderBeforeDelivery.paymentHistory.last().timestamp)
+                        .plus(Duration.ofSeconds(orderBeforeDelivery.deliveryDuration.toSeconds()))
+                    if (orderAfterDelivery.status.deliveryFinishTime > expectedDeliveryTime.toMillis()) {
+                        eventLogger.error(
+                            E_DELIVERY_LATE,
+                            orderAfterDelivery.id,
+                            orderAfterDelivery.status.deliveryFinishTime,
+                            expectedDeliveryTime.toMillis()
+                        )
+                        return TestStage.TestContinuationType.FAIL
+                    }
                 }
-                val expectedDeliveryTime = Duration.ofMillis(orderBeforeDelivery.paymentHistory.last().timestamp)
-                    .plus(Duration.ofSeconds(orderBeforeDelivery.deliveryDuration.toSeconds()))
-                if (orderAfterDelivery.status.deliveryFinishTime > expectedDeliveryTime.toMillis()) {
-                    eventLogger.error(
-                        E_DELIVERY_LATE,
-                        orderAfterDelivery.id,
-                        orderAfterDelivery.status.deliveryFinishTime,
-                        expectedDeliveryTime.toMillis()
-                    )
-                    return TestStage.TestContinuationType.FAIL
-                }
+
+
                 eventLogger.info(I_DELIVERY_SUCCESS, orderAfterDelivery.id)
             }
             is OrderStatus.OrderRefund -> {

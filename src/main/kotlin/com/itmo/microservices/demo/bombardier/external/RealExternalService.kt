@@ -7,7 +7,6 @@ import com.itmo.microservices.demo.bombardier.external.communicator.UserAwareExt
 import com.itmo.microservices.demo.bombardier.ServiceDescriptor
 import com.itmo.microservices.demo.bombardier.external.storage.UserStorage
 import org.springframework.http.HttpStatus
-import java.io.InterruptedIOException
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.ForkJoinPool
@@ -136,7 +135,7 @@ class RealExternalService(override val descriptor: ServiceDescriptor, private va
         return communicator.executeWithAuthAndDeserialize("getBookingHistory","/_internal/bookingHistory/$bookingId", session)
     }
 
-    override suspend fun deliveryLog(userId: UUID, orderId: UUID): DeliveryInfoRecord {
+    override suspend fun deliveryLog(userId: UUID, orderId: UUID): List<DeliveryInfoRecord> {
         val session = getUserSession(userId)
 
         return communicator.executeWithAuthAndDeserialize("deliveryLog","/_internal/deliveryLog/$orderId", session)
