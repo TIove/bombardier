@@ -47,7 +47,7 @@ interface TestStage {
             while (decoratedStage is DecoratingStage) {
                 decoratedStage = decoratedStage.wrapped
             }
-            ChoosingUserAccountStage.eventLog.error(append(testServiceFiledName, testCtx().serviceName),UserNotableEvents.E_UNEXPECTED_EXCEPTION, wrapped::class.simpleName, th)
+            ChoosingUserAccountStage.eventLog.error(append(testServiceFiledName, testCtx().serviceName),UserNotableEvents.E_UNEXPECTED_EXCEPTION, wrapped.name(), th)
             TestContinuationType.ERROR
         }
 
