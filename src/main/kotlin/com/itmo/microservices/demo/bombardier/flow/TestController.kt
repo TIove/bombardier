@@ -178,7 +178,7 @@ data class TestContext(
         get() = TestCtxKey
 
     fun finalizationNeeded() = OrderChangeItemsAfterFinalizationStage::class.java.simpleName in stagesComplete
-            && wasChangedAfterFinalization
+            && wasChangedAfterFinalization || !stagesComplete.contains(OrderFinalizingStage::class.java.simpleName)
 }
 
 data class PaymentDetails(
