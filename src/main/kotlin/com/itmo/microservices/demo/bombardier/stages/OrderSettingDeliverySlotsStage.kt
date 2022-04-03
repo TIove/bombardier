@@ -25,7 +25,7 @@ class OrderSettingDeliverySlotsStage : TestStage {
 
         eventLogger.info(I_CHOOSE_SLOT, testCtx().orderId)
 
-        if (!testCtx().finalizationNeeded()) {
+        if (!testCtx().finalizationNeeded(this)) {
             return TestStage.TestContinuationType.CONTINUE // todo logvinenko add log
         }
 

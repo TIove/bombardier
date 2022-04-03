@@ -11,6 +11,7 @@ import com.itmo.microservices.demo.common.logging.LoggerWrapper
 import com.itmo.microservices.demo.common.metrics.Metrics
 import kotlinx.coroutines.*
 import org.slf4j.LoggerFactory
+import org.springframework.core.annotation.Order
 import org.springframework.stereotype.Service
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
@@ -172,13 +173,15 @@ data class TestContext(
     var orderId: UUID? = null,
     var paymentDetails: PaymentDetails = PaymentDetails(),
     var stagesComplete: MutableList<String> = mutableListOf(),
-    var wasChangedAfterFinalization: Boolean = false,
+    var stagesSkipped: MutableList<String> = mutableListOf()
 ) : CoroutineContext.Element {
     override val key: CoroutineContext.Key<TestContext>
         get() = TestCtxKey
 
-    fun finalizationNeeded() = OrderChangeItemsAfterFinalizationStage::class.java.simpleName in stagesComplete
-            && wasChangedAfterFinalization || !stagesComplete.contains(OrderFinalizingStage::class.java.simpleName)
+    fun finalizationNeeded(stage: TestStage): Boolean {
+        return !stagesComplete.contains(stage::class.java.simpleName) ||
+                (stagesComplete.contains(OrderChangeItemsAfterFinalizationStage::class.java.simpleName) && !stagesSkipped.contains(OrderChangeItemsAfterFinalizationStage::class.java.simpleName))
+    }
 }
 
 data class PaymentDetails(

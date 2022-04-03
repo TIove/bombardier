@@ -23,13 +23,12 @@ class OrderChangeItemsAfterFinalizationStage : TestStage {
     override suspend fun run(userManagement: UserManagement, externalServiceApi: ExternalServiceApi): TestStage.TestContinuationType {
         eventLogger = EventLoggerWrapper(eventLog, testCtx().serviceName)
         val shouldRunStage = Random.nextBoolean()
-        if (testCtx().wasChangedAfterFinalization || !shouldRunStage) {
+        if (!shouldRunStage) {
             eventLogger.info(I_STATE_SKIPPED, testCtx().orderId)
-            testCtx().wasChangedAfterFinalization = false
+            testCtx().stagesSkipped.add(this::class.java.simpleName)
             return TestStage.TestContinuationType.CONTINUE
         }
 
-        testCtx().wasChangedAfterFinalization = true
         eventLogger.info(I_START_CHANGING_ITEMS, testCtx().orderId)
 
         val items = externalServiceApi.getAvailableItems(testCtx().userId!!)
