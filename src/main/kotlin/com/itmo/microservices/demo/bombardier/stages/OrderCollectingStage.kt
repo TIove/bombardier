@@ -2,15 +2,15 @@ package com.itmo.microservices.demo.bombardier.stages
 
 import com.itmo.microservices.commonlib.annotations.InjectEventLogger
 import com.itmo.microservices.commonlib.logging.EventLogger
-import com.itmo.microservices.demo.bombardier.flow.CoroutineLoggingFactory
 import com.itmo.microservices.demo.bombardier.external.ExternalServiceApi
 import com.itmo.microservices.demo.bombardier.flow.UserManagement
 import com.itmo.microservices.demo.bombardier.logging.OrderCollectingNotableEvents.*
+import com.itmo.microservices.demo.bombardier.utils.ConditionAwaiter
 import com.itmo.microservices.demo.common.logging.EventLoggerWrapper
 import org.springframework.stereotype.Component
-import java.lang.Integer.max
 import java.lang.Integer.min
 import java.util.*
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 @Component
@@ -38,25 +38,37 @@ class OrderCollectingStage : TestStage {
             externalServiceApi.putItemToOrder(testCtx().userId!!, testCtx().orderId!!, itemToAdd.id, amount)
         }
 
-        val finalOrder = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
-        val orderMap = finalOrder.itemsMap.mapKeys { it.key.id }
-        itemIds.forEach { (id, count) ->
-            if (!orderMap.containsKey(id)) {
-                eventLogger.error(E_ADD_ITEMS_FAIL, id, count, 0)
-                return TestStage.TestContinuationType.FAIL
+        var failedId : UUID? = null
+        var failedCount : Int? = null
+        var failedAmount : Int? = null
+        var finalNumOfItems : Int? = null
+        ConditionAwaiter.awaitAtMost(6, TimeUnit.SECONDS)
+            .condition {
+                val finalOrder = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
+                val orderMap = finalOrder.itemsMap.mapKeys { it.key.id }
+                finalNumOfItems = finalOrder.itemsMap.size
+                itemIds.all { (id, count) ->
+                    val isPassed = orderMap.containsKey(id) && orderMap[id] == count
+                    if (!isPassed) {
+                        failedId = id
+                        failedCount = count
+                        failedAmount = orderMap[id] ?: 0
+                    }
+                    isPassed
+                }
+                        && finalNumOfItems == itemIds.size
             }
-            if (orderMap[id] != count) {
-                eventLogger.error(E_ADD_ITEMS_FAIL, id, count, orderMap[id])
-                return TestStage.TestContinuationType.FAIL
-            }
-        }
+            .onFailure {
+                if (failedId != null)
+                    eventLogger.error(E_ADD_ITEMS_FAIL, failedId, failedCount, failedAmount)
+                else if (finalNumOfItems != itemIds.size)
+                    eventLogger.error(E_ITEMS_MISMATCH, finalNumOfItems, itemIds.size)
 
-        val finalNumOfItems = finalOrder.itemsMap.size
-        if (finalNumOfItems != itemIds.size) {
-            eventLogger.error(E_ITEMS_MISMATCH, finalNumOfItems, itemIds.size)
-            return TestStage.TestContinuationType.FAIL
-
-        }
+                if (it != null) {
+                    throw it
+                }
+                throw TestStage.TestStageFailedException("Exception instead of silently fail")
+            }.startWaiting()
 
         eventLogger.info(I_ORDER_COLLECTING_SUCCESS, itemIds.size, testCtx().orderId)
         return TestStage.TestContinuationType.CONTINUE

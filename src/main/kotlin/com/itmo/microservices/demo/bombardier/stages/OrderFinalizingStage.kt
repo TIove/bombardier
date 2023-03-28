@@ -2,15 +2,14 @@ package com.itmo.microservices.demo.bombardier.stages
 
 import com.itmo.microservices.commonlib.annotations.InjectEventLogger
 import com.itmo.microservices.commonlib.logging.EventLogger
-import com.itmo.microservices.demo.bombardier.external.BookingStatus
-import com.itmo.microservices.demo.bombardier.flow.CoroutineLoggingFactory
-import com.itmo.microservices.demo.bombardier.external.OrderStatus
-import com.itmo.microservices.demo.bombardier.external.ExternalServiceApi
+import com.itmo.microservices.demo.bombardier.external.*
 import com.itmo.microservices.demo.bombardier.flow.UserManagement
 import com.itmo.microservices.demo.bombardier.logging.OrderCommonNotableEvents
 import com.itmo.microservices.demo.bombardier.logging.OrderFinaizingNotableEvents.*
+import com.itmo.microservices.demo.bombardier.utils.ConditionAwaiter
 import com.itmo.microservices.demo.common.logging.EventLoggerWrapper
 import org.springframework.stereotype.Component
+import java.util.concurrent.TimeUnit
 
 @Component
 class OrderFinalizingStage : TestStage {
@@ -39,13 +38,23 @@ class OrderFinalizingStage : TestStage {
 
         val orderStateAfterBooking = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
 
-        val bookingRecords = externalServiceApi.getBookingHistory(testCtx().userId!!, bookingResult.id)
-        for (item in orderStateAfterBooking.itemsMap.keys) {
-            if (bookingRecords.none { it.itemId == item.id }) {
-                eventLogger.error(E_BOOKING_LOG_RECORD_NOT_FOUND, bookingResult.id, item.id, testCtx().orderId)
-                return TestStage.TestContinuationType.FAIL
+        var failedItem : OrderItem? = null
+        var bookingRecords : List<BookingLogRecord> = listOf()
+        ConditionAwaiter.awaitAtMost(6, TimeUnit.SECONDS)
+            .condition {
+                bookingRecords = externalServiceApi.getBookingHistory(testCtx().userId!!, bookingResult.id)
+                failedItem = orderStateAfterBooking.itemsMap.keys.find  { item ->
+                    bookingRecords.none { it.itemId == item.id }
+                }
+                failedItem == null
             }
-        }
+            .onFailure {
+                eventLogger.error(E_BOOKING_LOG_RECORD_NOT_FOUND, bookingResult.id, failedItem!!.id, testCtx().orderId)
+                if (it != null) {
+                    throw it
+                }
+                throw TestStage.TestStageFailedException("Exception instead of silently fail")
+            }.startWaiting()
 
         when (orderStateAfterBooking.status) { //TODO Elina рассмотреть результат discard
             OrderStatus.OrderBooked -> {
