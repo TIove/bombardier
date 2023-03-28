@@ -48,10 +48,7 @@ class OrderChangeItemsAfterFinalizationStage : TestStage {
 
                     theOrder.itemsMap.any {
                         it.key.id == itemToAdd.id &&
-                                it.value == amount +
-                                (theOrderBefore.itemsMap.firstNotNullOfOrNull {
-                                        it2 -> if (it2.key.id == it.key.id) it2.value else null
-                                } ?: 0)
+                                it.value == amount
                     }
                             && theOrder.status == OrderStatus.OrderCollecting
                 }
