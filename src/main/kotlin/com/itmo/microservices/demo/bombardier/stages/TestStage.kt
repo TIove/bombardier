@@ -22,7 +22,9 @@ interface TestStage {
                     TestContinuationType.CONTINUE -> return state
                     TestContinuationType.FAIL -> return state
                     TestContinuationType.RETRY -> Unit
+                    else -> throw IllegalStateException("Enum is not correct")
                 }
+
             }
             return TestContinuationType.RETRY
         }

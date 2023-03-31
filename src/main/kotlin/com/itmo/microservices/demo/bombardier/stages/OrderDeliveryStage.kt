@@ -42,7 +42,8 @@ class OrderDeliveryStage : TestStage {
         ConditionAwaiter.awaitAtMost(orderBeforeDelivery.deliveryDuration.toSeconds() + 5, TimeUnit.SECONDS)
             .condition {
                 val updatedOrder = externalServiceApi.getOrder(testCtx().userId!!, testCtx().orderId!!)
-                updatedOrder.status is OrderStatus.OrderDelivered ||
+                updatedOrder.status is OrderStatus.OrderPayed ||
+                        updatedOrder.status is OrderStatus.OrderDelivered ||
                         updatedOrder.status is OrderStatus.OrderRefund &&
                         externalServiceApi.userFinancialHistory(
                             testCtx().userId!!,
@@ -80,6 +81,9 @@ class OrderDeliveryStage : TestStage {
                 }
 
 
+                eventLogger.info(I_DELIVERY_SUCCESS, orderAfterDelivery.id)
+            }
+            is OrderStatus.OrderPayed -> {
                 eventLogger.info(I_DELIVERY_SUCCESS, orderAfterDelivery.id)
             }
             is OrderStatus.OrderRefund -> {
